@@ -120,7 +120,7 @@ protected section.
   methods GET_IXML_FROM_ZIP_ARCHIVE
     importing
       !I_FILENAME type STRING
-      !IS_NORMALIZING type BOOLEAN default 'X'
+      !IS_NORMALIZING type abap_bool default 'X'
     returning
       value(R_IXML) type ref to IF_IXML_DOCUMENT
     raising
@@ -564,9 +564,6 @@ METHOD get_dxf_style_guid.
     lo_ixml_dxf_child ?= lo_ixml_iterator_dxf_children->get_next( ).
 
   ENDWHILE.
-
-
-
 
   rv_style_guid = io_excel->get_static_cellstyle_guid( ip_cstyle_complete  = ls_cstyle
                                                        ip_cstylex_complete = ls_cstylex  ).
@@ -2458,8 +2455,10 @@ METHOD load_worksheet.
 
       CASE ls_cell-t.
         WHEN 's'. " String values are stored as index in shared string table
-          lv_index = lo_ixml_value_elem->get_value( ) + 1.
-          READ TABLE shared_strings INTO lv_cell_value INDEX lv_index.
+          IF lo_ixml_value_elem IS BOUND.
+            lv_index = lo_ixml_value_elem->get_value( ) + 1.
+            READ TABLE shared_strings INTO lv_cell_value INDEX lv_index.
+          ENDIF.
         WHEN 'inlineStr'. " inlineStr values are kept in special node
           lo_ixml_value_elem = lo_ixml_cell_elem->find_from_name( name = 'is' ).
           IF lo_ixml_value_elem IS BOUND.
@@ -2913,11 +2912,10 @@ METHOD load_worksheet_cond_format.
            lo_ixml_rule,
            lo_style_cond.
 
-
 *--------------------------------------------------------------------*
 * Get type of rule
 *--------------------------------------------------------------------*
-    lo_ixml_rules       =  io_ixml_worksheet->get_elements_by_tag_name( name = 'cfRule' ).
+    lo_ixml_rules       =  lo_ixml_cond_format->get_elements_by_tag_name( name = 'cfRule' ).
     lo_ixml_iterator2   =  lo_ixml_rules->create_iterator( ).
     lo_ixml_rule        ?= lo_ixml_iterator2->get_next( ).
 
@@ -2931,37 +2929,37 @@ METHOD load_worksheet_cond_format.
       CASE lv_rule.
 
         WHEN zcl_excel_style_cond=>c_rule_cellis.
-          lo_style_cond = io_worksheet->add_new_style_cond( ).
+          lo_style_cond = io_worksheet->add_new_style_cond( '' ).
           load_worksheet_cond_format_ci( io_ixml_rule  = lo_ixml_rule
                                          io_style_cond = lo_style_cond ).
 
         WHEN zcl_excel_style_cond=>c_rule_databar.
-          lo_style_cond = io_worksheet->add_new_style_cond( ).
+          lo_style_cond = io_worksheet->add_new_style_cond( '' ).
           load_worksheet_cond_format_db( io_ixml_rule  = lo_ixml_rule
                                          io_style_cond = lo_style_cond ).
 
         WHEN zcl_excel_style_cond=>c_rule_expression.
-          lo_style_cond = io_worksheet->add_new_style_cond( ).
+          lo_style_cond = io_worksheet->add_new_style_cond( '' ).
           load_worksheet_cond_format_ex( io_ixml_rule  = lo_ixml_rule
                                          io_style_cond = lo_style_cond ).
 
         WHEN zcl_excel_style_cond=>c_rule_iconset.
-          lo_style_cond = io_worksheet->add_new_style_cond( ).
+          lo_style_cond = io_worksheet->add_new_style_cond( '' ).
           load_worksheet_cond_format_is( io_ixml_rule  = lo_ixml_rule
                                          io_style_cond = lo_style_cond ).
 
         WHEN zcl_excel_style_cond=>c_rule_colorscale.
-          lo_style_cond = io_worksheet->add_new_style_cond( ).
+          lo_style_cond = io_worksheet->add_new_style_cond( '' ).
           load_worksheet_cond_format_cs( io_ixml_rule  = lo_ixml_rule
                                          io_style_cond = lo_style_cond ).
 
         WHEN zcl_excel_style_cond=>c_rule_top10.
-          lo_style_cond = io_worksheet->add_new_style_cond( ).
+          lo_style_cond = io_worksheet->add_new_style_cond( '' ).
           load_worksheet_cond_format_t10( io_ixml_rule  = lo_ixml_rule
                                          io_style_cond = lo_style_cond ).
 
         WHEN zcl_excel_style_cond=>c_rule_above_average.
-          lo_style_cond = io_worksheet->add_new_style_cond( ).
+          lo_style_cond = io_worksheet->add_new_style_cond( '' ).
           load_worksheet_cond_format_aa(  io_ixml_rule  = lo_ixml_rule
                                          io_style_cond = lo_style_cond ).
         WHEN OTHERS.
@@ -3812,19 +3810,6 @@ method RESOLVE_REFERENCED_FORMULAE.
     ENDLOOP.
 
   ENDLOOP.
-  endmethod.
-
-
-method ZIF_EXCEL_READER~CAN_READ_FILE.
-*--------------------------------------------------------------------*
-* issue #230   - Pimp my Code
-*              - Stefan Schmöcker,      (done)              2012-11-07
-*              - ...
-* changes: nothing done in code
-*          but started discussion about killing this method
-*--------------------------------------------------------------------*
-* For now always Unknown
-  r_readable = abap_undefined.
   endmethod.
 
 
